@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amatya - Privacy-First Finance Manager</title>
+    <!-- ADD YOUR FAVICON LINK HERE -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5"/>
+    <style>
+        :root {
+            --sidebar-width: 250px;
+        }
+        #main-content {
+            transition: margin-left .5s;
+            margin-left: var(--sidebar-width);
+        }
+        @media (max-width: 1024px) {
+            #main-content {
+                margin-left: 0;
+            }
+            #sidebar {
+                transform: translateX(calc(-1 * var(--sidebar-width)));
+            }
+            #sidebar.open {
+                transform: translateX(0);
+            }
+        }
+        .animate-enter {
+            animation: enter 0.2s ease-out;
+        }
+        @keyframes enter {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .filter-btn.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .header-row { cursor: pointer; }
+        .header-row:hover { background-color: #eef2ff; }
+        .header-row.selected { background-color: #c7d2fe; font-weight: bold; }
+        .preview-table td, .preview-table th { white-space: nowrap; padding: 0.5rem; border: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div id="app-container" class="flex">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-white w-[var(--sidebar-width)] h-screen fixed top-0 left-0 z-40 p-6 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-lg">
+            <div class="flex items-center gap-3 mb-10">
+                <!-- UPDATED LOGO HERE -->
+                <img src="images/logo.png" alt="Amatya Logo" class="h-8 w-8">
+                <h1 class="text-2xl font-bold">Amatya</h1>
+            </div>
+            <nav id="main-nav" class="flex flex-col gap-2">
+                <!-- Nav items will be inserted here -->
+            </nav>
+            <div class="mt-auto">
+                <p class="text-xs text-center text-slate-400">&copy; Amatya. All data is private.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="w-full p-4 md:p-8">
+            <header class="flex justify-between items-center mb-6">
+                <button id="menu-toggle" class="lg:hidden text-2xl"><i class="fas fa-bars"></i></button>
+                <h2 id="page-title" class="text-3xl font-bold">Dashboard</h2>
+            </header>
+            <div id="page-content" class="animate-enter">
+                <!-- Page content will be injected here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-container" class="hidden fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <!-- Modal content will be injected here -->
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
+
+    <script type="module" src="js/app.js"></script>
+
+</body>
+</html>
+
