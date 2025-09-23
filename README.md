@@ -88,9 +88,6 @@ Open your web browser and navigate to:
 http://localhost:8000
 
 The application should now be running locally on your machine!
-## Contributing
-
-Contributions are always welcome!
 
 ## Contributing
 
