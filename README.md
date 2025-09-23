@@ -5,6 +5,10 @@ Amatya is a modern, 100% private, browser-based personal finance manager. It's d
 
 This repository is public to allow for full transparency. You are encouraged to inspect the code to verify its privacy-first claims.
 
+## App access
+
+www.myamatya.in
+
 ## Core Philosophy: Your Data is Your Own
 
 In an age where personal data is a commodity, Amatya takes a firm stance on privacy.

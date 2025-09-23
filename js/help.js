@@ -40,13 +40,34 @@ export const Help = {
                             <strong>Select the Header Row:</strong> Click on the row in the preview that has your column titles (like 'Date', 'Description'). This tells Amatya to ignore any extra information at the top of the file.
                         </li>
                         <li>
-                            <strong>Map the Columns:</strong> For each column from your file, use the dropdown to select the matching field (e.g., tell Amatya which column is 'Debit' and which is 'Credit').
+                            <strong>Map the Columns:</strong> For each column from your file, use the dropdown to select the matching field (e.g., tell Amatya which column is 'Debit' and 'Credit').
                         </li>
                          <li>
                             <strong>Save the Profile:</strong> Give your mapping a name (e.g., "HDFC Savings Account"). The next time you upload a file, you can just select this profile to skip the mapping steps!
                         </li>
                         <li>
                             <strong>Review and Finalize:</strong> On the final screen, you can assign categories, mark transactions as recurring, and classify transfers before saving them to your records.
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Planning Your Budget with Projections</h3>
+                    <p class="mb-3">
+                        The <i class="fas fa-chart-line"></i> <strong>Projections</strong> page is where you can plan your budget for upcoming months.
+                    </p>
+                    <ol class="list-decimal list-inside space-y-3">
+                        <li>
+                            <strong>Select a Month:</strong> Use the dropdown menus at the top to choose the Year and Month you want to plan for.
+                        </li>
+                        <li>
+                            <strong>Copy Recurring Bills:</strong> Click the "Create New/Copy" button. Amatya will automatically find all expenses you've marked as "recurring" in other projections (like rent or subscriptions) and add them to the new month's plan.
+                        </li>
+                        <li>
+                            <strong>Add One-Time Expenses:</strong> Click the "+ Add Expense" button to add any other expenses you anticipate for that month, such as a planned trip or a doctor's visit.
+                        </li>
+                        <li>
+                            <strong>Review Your Plan:</strong> The overview at the top shows your total projected expenses for the month and compares it against your current account balance, so you know exactly where you stand.
                         </li>
                     </ol>
                 </div>
@@ -74,7 +95,21 @@ export const Help = {
                     </p>
                 </div>
 
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Open Source & Transparency</h3>
+                    <p class="mb-3">
+                        Amatya is a free and open-source project. We believe in full transparency, which is why the complete source code is available for you to inspect, audit, and contribute to.
+                    </p>
+                    <p>
+                        You can find the public repository on GitHub:
+                        <a href="https://github.com/shrikul1989/amatya" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">
+                            https://github.com/shrikul1989/amatya
+                        </a>
+                    </p>
+                </div>
+
             </div>
         `;
     }
 };
+
