@@ -62,9 +62,9 @@ export const App = {
                     { id: Date.now() + 12, name: 'Education', color: '#3b82f6', icon: 'fas fa-graduation-cap' },
                 ];
                 App.state.accounts = [
-                    { id: Date.now() + 13, name: 'Checking Account', initialBalance: 10000 },
-                    { id: Date.now() + 14, name: 'Savings Account', initialBalance: 50000 },
-                    { id: Date.now() + 15, name: 'Visa Card', initialBalance: -5000 },
+                    { id: Date.now() + 13, name: 'HDFC Savings xxxx', initialBalance: 1000 },
+                    { id: Date.now() + 14, name: 'ICICI Savings xxxx', initialBalance: 1000 },
+                    { id: Date.now() + 15, name: 'SBI Credit Card - xxxx', initialBalance: 0 },
                 ];
                 App.db.save();
             }
@@ -83,6 +83,7 @@ export const App = {
         this.navigateTo(this.state.activeTab);
         this.bindEvents();
         this.showWelcomeModalIfNeeded();
+        this.showBackupAlert();
     },
 
     // --- NAVIGATION & ROUTING ---
@@ -134,6 +135,16 @@ export const App = {
                 this.navigateTo(navLink.dataset.tab);
             }
         });
+
+        // Backup alert listeners
+        const closeBackupAlertBtn = document.getElementById('close-backup-alert');
+        if (closeBackupAlertBtn) {
+            closeBackupAlertBtn.addEventListener('click', () => this.hideBackupAlert());
+        }
+        const backupAlertSettingsLink = document.getElementById('backup-alert-settings-link');
+        if (backupAlertSettingsLink) {
+            backupAlertSettingsLink.addEventListener('click', (e) => { e.preventDefault(); this.navigateTo('settings'); });
+        }
 
         const handleEvent = (eventType, e) => {
             const module = this.getModuleForTab(this.state.activeTab);
@@ -260,6 +271,20 @@ export const App = {
         document.documentElement.classList.remove('dark');
     },
 
+    showBackupAlert() {
+        // Use sessionStorage to only show the alert once per session
+        if (sessionStorage.getItem('amatyaBackupAlertDismissed')) {
+            return;
+        }
+        const alertEl = document.getElementById('backup-alert');
+        if (alertEl) alertEl.classList.remove('hidden');
+    },
+
+    hideBackupAlert() {
+        document.getElementById('backup-alert')?.classList.add('hidden');
+        sessionStorage.setItem('amatyaBackupAlertDismissed', 'true');
+    },
+
     renderNav() {
         const navEl = document.getElementById('main-nav');
         const navItems = [
@@ -368,4 +393,3 @@ export const App = {
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
-
