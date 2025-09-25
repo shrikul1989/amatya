@@ -5,6 +5,7 @@ export const Import = {
         headerRowIndex: -1,
         columnMap: {},
         profileId: null,
+        dateFormat: 'dmy_4', // Default date format
     },
 
     template(App) {
@@ -54,6 +55,15 @@ export const Import = {
         if (e.target.classList.contains('import-type-select')) {
             Import.toggleDestinationAccount(App, e.target);
         }
+        // Show/hide date format selector in column mapping
+        if (e.target.classList.contains('column-mapper')) {
+            const container = e.target.closest('th').querySelector('.date-format-selector-container');
+            if (e.target.value === 'date') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
     },
     
     handleClick(App, e) {
@@ -93,6 +103,39 @@ export const Import = {
         Import.state.headerRowIndex = -1;
         Import.state.columnMap = {};
         Import.state.profileId = null;
+        Import.state.dateFormat = 'dmy_4';
+    },
+
+    _parseDate(dateString, format) {
+        if (dateString instanceof Date) {
+            return dateString;
+        }
+        if (typeof dateString !== 'string') {
+            return null;
+        }
+
+        let parts;
+        switch (format) {
+            case 'dmy_4': // DD/MM/YYYY
+                parts = dateString.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                if (parts) return new Date(parts[3], parts[2] - 1, parts[1]);
+                break;
+            case 'mdy_4': // MM/DD/YYYY
+                parts = dateString.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+                if (parts) return new Date(parts[3], parts[1] - 1, parts[2]);
+                break;
+            case 'dmy_2': // DD/MM/YY
+                parts = dateString.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
+                if (parts) return new Date(parseInt(parts[3]) > 50 ? '19' + parts[3] : '20' + parts[3], parts[2] - 1, parts[1]);
+                break;
+            case 'mdy_2': // MM/DD/YY
+                parts = dateString.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
+                if (parts) return new Date(parseInt(parts[3]) > 50 ? '19' + parts[3] : '20' + parts[3], parts[1] - 1, parts[2]);
+                break;
+            case 'ymd_4': // YYYY-MM-DD
+                return new Date(dateString); // Default parser handles this well
+        }
+        return new Date(dateString);
     },
 
     handleFileSelect(App, file) {
@@ -127,6 +170,7 @@ export const Import = {
             if (profile) {
                 Import.state.headerRowIndex = profile.headerRowIndex;
                 Import.state.columnMap = profile.columnMap;
+                Import.state.dateFormat = profile.dateFormat || 'dmy_4';
                 Import.processAndReview(App);
             } else { // Profile might be deleted
                 Import.renderHeaderSelection(App);
@@ -150,7 +194,7 @@ export const Import = {
                         <tbody>
                             ${previewData.map((row, index) => `
                                 <tr class="header-row" data-row-index="${index}">
-                                    ${Array.from({ length: maxCols }, (_, i) => `<td>${row[i] instanceof Date ? row[i].toLocaleDateString() : (row[i] || '')}</td>`).join('')}
+                                          ${Array.from({ length: maxCols }, (_, i) => `<td>${row[i] instanceof Date ? row[i].toLocaleDateString('en-GB') : (row[i] || '')}</td>`).join('')}
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -193,9 +237,18 @@ export const Import = {
                                 ${header.map((col, index) => `
                                     <th class="p-2">
                                         <p class="font-bold mb-1">${col || '(Unnamed Column)'}</p>
-                                        <select class="column-mapper bg-slate-50 border border-slate-300 rounded-md p-1 w-full" data-col-index="${index}">
+                                        <select class="column-mapper bg-slate-50 border border-slate-300 rounded-md p-1 w-full" data-col-index="${index}" data-is-date-col="false">
                                             ${mappingOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('')}
                                         </select>
+                                        <div class="date-format-selector-container mt-1" style="display: none;">
+                                            <select class="date-format-selector bg-slate-50 border border-slate-300 rounded-md p-1 w-full">
+                                                <option value="dmy_4">DD/MM/YYYY</option>
+                                                <option value="mdy_4">MM/DD/YYYY</option>
+                                                <option value="dmy_2">DD/MM/YY</option>
+                                                <option value="mdy_2">MM/DD/YY</option>
+                                                <option value="ymd_4">YYYY-MM-DD</option>
+                                            </select>
+                                        </div>
                                     </th>
                                 `).join('')}
                             </tr>
@@ -203,7 +256,7 @@ export const Import = {
                         <tbody>
                            ${previewData.map(row => `
                                 <tr>
-                                    ${Array.from({ length: numCols }, (_, i) => `<td class="p-2">${row[i] instanceof Date ? row[i].toLocaleDateString() : (row[i] || '')}</td>`).join('')}
+                                    ${Array.from({ length: numCols }, (_, i) => `<td class="p-2">${row[i] instanceof Date ? row[i].toLocaleDateString('en-GB') : (row[i] || '')}</td>`).join('')}
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -221,6 +274,11 @@ export const Import = {
         if (Object.keys(Import.state.columnMap).length === 0) {
             document.querySelectorAll('.column-mapper').forEach(select => {
                 Import.state.columnMap[select.dataset.colIndex] = select.value;
+                // If this is the date column, find and save the selected format
+                if (select.value === 'date') {
+                    const formatSelector = select.closest('th').querySelector('.date-format-selector');
+                    Import.state.dateFormat = formatSelector.value;
+                }
             });
         }
         
@@ -237,7 +295,7 @@ export const Import = {
             }
 
             // Validate and format
-            const date = tx.date ? new Date(tx.date) : null;
+            const date = tx.date ? Import._parseDate(tx.date, Import.state.dateFormat) : null;
             let amount = 0;
             let type = 'expense';
             let description = tx.description ? String(tx.description).trim() : '';
@@ -308,7 +366,7 @@ export const Import = {
                             ${transactions.map(tx => `
                                 <tr data-transaction='${JSON.stringify(tx)}'>
                                     <td class="p-2"><input type="checkbox" class="import-checkbox" checked></td>
-                                    <td class="p-2">${new Date(tx.date).toLocaleDateString()}</td>
+                                    <td class="p-2">${new Date(tx.date).toLocaleDateString('en-GB')}</td>
                                     <td class="p-2">${tx.description}</td>
                                     <td class="p-2">
                                         <select class="import-type-select bg-slate-50 border border-slate-300 rounded-md p-1 w-full">
@@ -366,7 +424,8 @@ export const Import = {
                 id: Date.now(),
                 name: profileName,
                 headerRowIndex: Import.state.headerRowIndex,
-                columnMap: Import.state.columnMap
+                columnMap: Import.state.columnMap,
+                dateFormat: Import.state.dateFormat
             });
             App.db.save();
             App.showToast("Import profile saved!");
@@ -419,4 +478,3 @@ export const Import = {
         App.navigateTo('transactions');
     }
 };
-
