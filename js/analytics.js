@@ -33,12 +33,41 @@ export const Analytics = {
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-semibold">Category Spending Over Time</h3>
-                        <select id="analytics-category-select" class="bg-slate-50 border border-slate-300 rounded-md p-2 text-sm">
-                            ${App.getCategoryOptions()}
-                        </select>
+                        <div id="category-multiselect" class="relative w-56">
+                            <button id="category-multiselect-btn" class="bg-slate-50 border border-slate-300 rounded-md p-2 text-sm w-full text-left flex justify-between items-center">
+                                <span id="category-multiselect-label">Select Categories</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div id="category-multiselect-options" class="hidden absolute z-10 w-full bg-white border border-slate-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                                ${App.state.categories.map(cat => `
+                                    <label class="flex items-center gap-2 p-2 hover:bg-slate-100 cursor-pointer text-sm">
+                                        <input type="checkbox" class="category-checkbox" value="${cat.id}"> ${cat.name}
+                                    </label>`).join('')}
+                            </div>
+                        </div>
                     </div>
                     <div class="relative h-80">
                         <canvas id="analytics-category-time-chart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Income by Category</h3>
+                        <div id="income-category-multiselect" class="relative w-56">
+                            <button id="income-category-multiselect-btn" class="bg-slate-50 border border-slate-300 rounded-md p-2 text-sm w-full text-left flex justify-between items-center">
+                                <span id="income-category-multiselect-label">Select Categories</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div id="income-category-multiselect-options" class="hidden absolute z-10 w-full bg-white border border-slate-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                                ${App.state.categories.map(cat => `
+                                    <label class="flex items-center gap-2 p-2 hover:bg-slate-100 cursor-pointer text-sm">
+                                        <input type="checkbox" class="income-category-checkbox" value="${cat.id}"> ${cat.name}
+                                    </label>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative h-80">
+                        <canvas id="analytics-income-category-chart"></canvas>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-md">
@@ -68,12 +97,51 @@ export const Analytics = {
             filterBtn.classList.add('active');
             Analytics.setAnalyticsDateFilter(App, filterBtn.dataset.range);
         }
+
+        const multiselectBtn = e.target.closest('#category-multiselect-btn');
+        if (multiselectBtn) {
+            document.getElementById('category-multiselect-options').classList.toggle('hidden');
+        } else if (!e.target.closest('#category-multiselect')) {
+            // Close dropdown if clicking outside
+            document.getElementById('category-multiselect-options')?.classList.add('hidden');
+        }
+
+        const incomeMultiselectBtn = e.target.closest('#income-category-multiselect-btn');
+        if (incomeMultiselectBtn) {
+            document.getElementById('income-category-multiselect-options').classList.toggle('hidden');
+        } else if (!e.target.closest('#income-category-multiselect')) {
+            document.getElementById('income-category-multiselect-options')?.classList.add('hidden');
+        }
     },
 
     handleChange(App, e) {
-        if (e.target.classList.contains('analytics-date-filter') || e.target.id === 'analytics-category-select') {
+        if (e.target.classList.contains('analytics-date-filter')) {
             document.querySelectorAll('#analytics-predefined-filters .filter-btn').forEach(btn => btn.classList.remove('active'));
             Analytics.renderAnalyticsCharts(App);
+        }
+        if (e.target.classList.contains('category-checkbox')) {
+            Analytics.renderAnalyticsCharts(App);
+            
+            // Update the label
+            const checkedCount = document.querySelectorAll('.category-checkbox:checked').length;
+            const label = document.getElementById('category-multiselect-label');
+            if (checkedCount === 0) {
+                label.textContent = 'Select Categories';
+            } else {
+                label.textContent = `${checkedCount} categor${checkedCount > 1 ? 'ies' : 'y'} selected`;
+            }
+        }
+        if (e.target.classList.contains('income-category-checkbox')) {
+            Analytics.renderAnalyticsCharts(App);
+            
+            // Update the label
+            const checkedCount = document.querySelectorAll('.income-category-checkbox:checked').length;
+            const label = document.getElementById('income-category-multiselect-label');
+            if (checkedCount === 0) {
+                label.textContent = 'Select Categories';
+            } else {
+                label.textContent = `${checkedCount} categor${checkedCount > 1 ? 'ies' : 'y'} selected`;
+            }
         }
     },
 
@@ -99,8 +167,10 @@ export const Analytics = {
     renderAnalyticsCharts(App) {
         const startDateInput = document.getElementById('analytics-start-date');
         const endDateInput = document.getElementById('analytics-end-date');
-        const categoryId = document.getElementById('analytics-category-select').value;
-
+        const checkedSpendingCategories = document.querySelectorAll('.category-checkbox:checked');
+        const selectedSpendingCategoryIds = [...checkedSpendingCategories].map(cb => cb.value);
+        const checkedIncomeCategories = document.querySelectorAll('.income-category-checkbox:checked');
+        const selectedIncomeCategoryIds = [...checkedIncomeCategories].map(cb => cb.value);
         if (!startDateInput || !endDateInput) return;
 
         const startDate = new Date(startDateInput.value);
@@ -115,32 +185,39 @@ export const Analytics = {
         if (window.analyticsIncomeExpenseChart) window.analyticsIncomeExpenseChart.destroy();
         if (window.analyticsCategoryTimeChart) window.analyticsCategoryTimeChart.destroy();
         if (window.analyticsSourceChart) window.analyticsSourceChart.destroy();
+        if (window.analyticsIncomeCategoryChart) window.analyticsIncomeCategoryChart.destroy();
         if (window.analyticsRecurringChart) window.analyticsRecurringChart.destroy();
 
         // 1. Income vs Expense Chart
         const incomeExpenseData = filteredTxs.reduce((acc, tx) => {
-            const date = new Date(tx.date).toLocaleDateString();
-            if (!acc[date]) {
-                acc[date] = { income: 0, expense: 0 };
+            const date = new Date(tx.date);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (!acc[key]) {
+                acc[key] = { income: 0, expense: 0, label: date.toLocaleString('default', { month: 'short', year: 'numeric' }) };
             }
-            if (tx.type !== 'transfer') acc[date][tx.type] += tx.amount;
+            if (tx.type === 'income') {
+                acc[key].income += tx.amount;
+            } else if (tx.type === 'expense') {
+                acc[key].expense += tx.amount;
+            }
             return acc;
         }, {});
 
-        const sortedDates = Object.keys(incomeExpenseData).sort((a, b) => new Date(a) - new Date(b));
-        const incomeData = sortedDates.map(date => incomeExpenseData[date].income);
-        const expenseData = sortedDates.map(date => incomeExpenseData[date].expense);
+        const sortedKeysIE = Object.keys(incomeExpenseData).sort();
+        const labelsIE = sortedKeysIE.map(key => incomeExpenseData[key].label);
+        const incomeData = sortedKeysIE.map(key => incomeExpenseData[key].income);
+        const expenseData = sortedKeysIE.map(key => incomeExpenseData[key].expense);
 
         const incomeExpenseCanvas = document.getElementById('analytics-income-expense-chart');
         if (incomeExpenseCanvas) {
             const ctx = incomeExpenseCanvas.getContext('2d');
             window.analyticsIncomeExpenseChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: sortedDates,
+                    labels: labelsIE,
                     datasets: [
-                        { label: 'Income', data: incomeData, borderColor: '#22c55e', fill: false },
-                        { label: 'Expense', data: expenseData, borderColor: '#ef4444', fill: false }
+                        { label: 'Income', data: incomeData, backgroundColor: '#22c55e' },
+                        { label: 'Expense', data: expenseData, backgroundColor: '#ef4444' }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -148,15 +225,29 @@ export const Analytics = {
         }
 
         // 2. Category vs Time Chart
-        const categoryTxs = filteredTxs.filter(tx => tx.categoryId == categoryId && tx.type === 'expense');
+        const categoryTxs = filteredTxs.filter(tx => selectedSpendingCategoryIds.includes(tx.categoryId) && tx.type === 'expense');
         const categoryTimeData = categoryTxs.reduce((acc, tx) => {
-            const monthYear = new Date(tx.date).toLocaleString('default', { month: 'short', year: 'numeric' });
-            acc[monthYear] = (acc[monthYear] || 0) + tx.amount;
+            const date = new Date(tx.date);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (!acc[key]) {
+                acc[key] = { amount: 0, label: date.toLocaleString('default', { month: 'short', year: 'numeric' }) };
+            }
+            acc[key].amount += tx.amount;
             return acc;
         }, {});
 
-        const sortedMonths = Object.keys(categoryTimeData).sort((a, b) => new Date(a) - new Date(b));
-        const categorySpending = sortedMonths.map(month => categoryTimeData[month]);
+        const sortedKeysCat = Object.keys(categoryTimeData).sort();
+        const labelsCat = sortedKeysCat.map(key => categoryTimeData[key].label);
+        const categorySpending = sortedKeysCat.map(key => categoryTimeData[key].amount);
+        
+        let categoryChartLabel = 'Spending in Selected Categories';
+        let categoryChartColor = '#4f46e5'; // Default color
+        if (selectedSpendingCategoryIds.length === 1) {
+            const category = App.getCategoryById(selectedSpendingCategoryIds[0]);
+            categoryChartLabel = `Spending in ${category.name}`;
+            categoryChartColor = category.color;
+        }
+
 
         const categoryTimeCanvas = document.getElementById('analytics-category-time-chart');
         if (categoryTimeCanvas) {
@@ -164,18 +255,55 @@ export const Analytics = {
             window.analyticsCategoryTimeChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: sortedMonths,
+                    labels: labelsCat,
                     datasets: [{
-                        label: `Spending in ${App.getCategoryById(categoryId).name}`,
+                        label: categoryChartLabel,
                         data: categorySpending,
-                        backgroundColor: App.getCategoryById(categoryId).color || '#4f46e5'
+                        backgroundColor: categoryChartColor
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
         }
         
-        // 3. Source Comparison Chart
+        // 3. Income by Category Chart
+        const incomeCategoryTxs = filteredTxs.filter(tx => selectedIncomeCategoryIds.includes(tx.categoryId) && tx.type === 'income');
+        const incomeCategoryTimeData = incomeCategoryTxs.reduce((acc, tx) => {
+            const date = new Date(tx.date);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (!acc[key]) {
+                acc[key] = { amount: 0, label: date.toLocaleString('default', { month: 'short', year: 'numeric' }) };
+            }
+            acc[key].amount += tx.amount;
+            return acc;
+        }, {});
+
+        const sortedKeysIncomeCat = Object.keys(incomeCategoryTimeData).sort();
+        const labelsIncomeCat = sortedKeysIncomeCat.map(key => incomeCategoryTimeData[key].label);
+        const incomeCategoryData = sortedKeysIncomeCat.map(key => incomeCategoryTimeData[key].amount);
+        
+        let incomeCatChartLabel = 'Income from Selected Categories';
+        let incomeCatChartColor = '#16a34a'; // Default green color
+        if (selectedIncomeCategoryIds.length === 1) {
+            const category = App.getCategoryById(selectedIncomeCategoryIds[0]);
+            incomeCatChartLabel = `Income from ${category.name}`;
+            incomeCatChartColor = category.color;
+        }
+
+        const incomeCategoryCanvas = document.getElementById('analytics-income-category-chart');
+        if (incomeCategoryCanvas) {
+            const ctx = incomeCategoryCanvas.getContext('2d');
+            window.analyticsIncomeCategoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelsIncomeCat,
+                    datasets: [{ label: incomeCatChartLabel, data: incomeCategoryData, backgroundColor: incomeCatChartColor }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+        
+        // 4. Source Comparison Chart
         const sourceSpending = filteredTxs.filter(t => t.type === 'expense').reduce((acc, tx) => {
             const source = App.getAccountById(tx.accountId);
             acc[source.name] = (acc[source.name] || 0) + tx.amount;
@@ -198,7 +326,7 @@ export const Analytics = {
             });
         }
         
-        // 4. Recurring vs Non-recurring Chart
+        // 5. Recurring vs Non-recurring Chart
         const recurringSpending = filteredTxs.filter(t => t.type === 'expense').reduce((acc, tx) => {
             const type = tx.recurring ? 'Recurring' : 'Non-recurring';
             acc[type] = (acc[type] || 0) + tx.amount;
@@ -222,4 +350,3 @@ export const Analytics = {
         }
     }
 };
-
