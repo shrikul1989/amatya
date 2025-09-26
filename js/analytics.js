@@ -82,6 +82,22 @@ export const Analytics = {
                         <canvas id="analytics-recurring-chart"></canvas>
                     </div>
                 </div>
+                <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+                     <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        <h3 class="text-xl font-semibold">Internal Transfers Over Time</h3>
+                        <div class="flex flex-wrap items-center gap-4">
+                             <select id="analytics-transfer-from" class="analytics-transfer-filter bg-slate-50 border border-slate-300 rounded-md p-2 text-sm">
+                                <option value="">From: Any Account</option>
+                                ${App.getAccountOptions()}
+                            </select>
+                            <select id="analytics-transfer-to" class="analytics-transfer-filter bg-slate-50 border border-slate-300 rounded-md p-2 text-sm">
+                                <option value="">To: Any Account</option>
+                                ${App.getAccountOptions()}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="relative h-80"><canvas id="analytics-transfers-chart"></canvas></div>
+                </div>
             </div>
         `;
     },
@@ -143,6 +159,9 @@ export const Analytics = {
                 label.textContent = `${checkedCount} categor${checkedCount > 1 ? 'ies' : 'y'} selected`;
             }
         }
+        if (e.target.classList.contains('analytics-transfer-filter')) {
+            Analytics.renderAnalyticsCharts(App);
+        }
     },
 
     setAnalyticsDateFilter(App, range) {
@@ -171,6 +190,8 @@ export const Analytics = {
         const selectedSpendingCategoryIds = [...checkedSpendingCategories].map(cb => cb.value);
         const checkedIncomeCategories = document.querySelectorAll('.income-category-checkbox:checked');
         const selectedIncomeCategoryIds = [...checkedIncomeCategories].map(cb => cb.value);
+        const transferFromId = document.getElementById('analytics-transfer-from').value;
+        const transferToId = document.getElementById('analytics-transfer-to').value;
         if (!startDateInput || !endDateInput) return;
 
         const startDate = new Date(startDateInput.value);
@@ -187,6 +208,7 @@ export const Analytics = {
         if (window.analyticsSourceChart) window.analyticsSourceChart.destroy();
         if (window.analyticsIncomeCategoryChart) window.analyticsIncomeCategoryChart.destroy();
         if (window.analyticsRecurringChart) window.analyticsRecurringChart.destroy();
+        if (window.analyticsTransfersChart) window.analyticsTransfersChart.destroy();
 
         // 1. Income vs Expense Chart
         const incomeExpenseData = filteredTxs.reduce((acc, tx) => {
@@ -344,6 +366,42 @@ export const Analytics = {
                         data: Object.values(recurringSpending),
                         backgroundColor: ['#6366f1', '#a855f7'],
                     }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 6. Internal Transfers Chart
+        let transferTxs = filteredTxs.filter(tx => tx.type === 'transfer');
+        if (transferFromId) {
+            transferTxs = transferTxs.filter(tx => tx.accountId == transferFromId);
+        }
+        if (transferToId) {
+            transferTxs = transferTxs.filter(tx => tx.destinationAccountId == transferToId);
+        }
+
+        const transferTimeData = transferTxs.reduce((acc, tx) => {
+            const date = new Date(tx.date);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            if (!acc[key]) {
+                acc[key] = { amount: 0, label: date.toLocaleString('default', { month: 'short', year: 'numeric' }) };
+            }
+            acc[key].amount += tx.amount;
+            return acc;
+        }, {});
+
+        const sortedKeysTransfers = Object.keys(transferTimeData).sort();
+        const labelsTransfers = sortedKeysTransfers.map(key => transferTimeData[key].label);
+        const transferData = sortedKeysTransfers.map(key => transferTimeData[key].amount);
+
+        const transfersCanvas = document.getElementById('analytics-transfers-chart');
+        if (transfersCanvas) {
+            const ctx = transfersCanvas.getContext('2d');
+            window.analyticsTransfersChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelsTransfers,
+                    datasets: [{ label: 'Total Transfers', data: transferData, backgroundColor: '#3b82f6' }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });

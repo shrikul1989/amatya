@@ -103,7 +103,7 @@ export const App = {
         
         const module = this.getModuleForTab(tabId);
         pageContent.innerHTML = module.template(this);
-        pageTitle.textContent = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+        pageTitle.textContent = tabId === 'projections' ? 'Monthly Budget' : tabId.charAt(0).toUpperCase() + tabId.slice(1);
         
         if (module.postRender) {
             module.postRender(this);

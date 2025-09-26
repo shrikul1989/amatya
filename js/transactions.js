@@ -149,6 +149,7 @@ export const Transactions = {
                 destinationAccountId,
                 date: new Date(document.getElementById('transfer-date').value).toISOString(),
                 description: document.getElementById('transfer-description').value,
+                categoryId: document.getElementById('transfer-category').value
             };
 
             if (id) { // Editing
@@ -173,14 +174,17 @@ export const Transactions = {
         const tableBody = document.getElementById('transactions-table-body');
         if(tableBody) {
             tableBody.innerHTML = sortedTransactions.map(tx => {
-                if(tx.type === 'transfer') {
+                if (tx.type === 'transfer') {
                     const source = App.getAccountById(tx.accountId);
                     const dest = App.getAccountById(tx.destinationAccountId);
+                    const category = App.getCategoryById(tx.categoryId);
                     return `
                         <tr class="border-b">
                             <td class="p-4">${new Date(tx.date).toLocaleDateString()}</td>
                             <td class="p-4">${tx.description || 'Self Transfer'}</td>
-                            <td class="p-4"><span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Transfer</span></td>
+                            <td class="p-4"><span class="px-2 py-1 text-xs rounded-full" style="background-color:${category.color}33; color:${category.color}">${category.name}</span>
+                                <p class="text-xs text-slate-400 mt-1">Transfer</p>
+                            </td>
                             <td class="p-4 text-sm text-slate-500">${source.name} &rarr; ${dest.name}</td>
                             <td class="p-4 text-right font-semibold text-slate-500">${App.formatCurrency(tx.amount)}</td>
                             <td class="p-4 text-center">
@@ -322,6 +326,10 @@ export const Transactions = {
                         <label class="block text-sm font-medium">Description (Optional)</label>
                         <input type="text" id="transfer-description" value="${isEdit ? transfer.description || '' : ''}" class="mt-1 w-full bg-slate-50 border rounded-md p-2">
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium">Category</label>
+                        <select id="transfer-category" required class="mt-1 w-full bg-slate-50 border rounded-md p-2">${App.getCategoryOptions(isEdit ? transfer.categoryId : null)}</select>
+                    </div>
                 </div>
                 <div class="flex justify-end mt-6">
                     <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg">${isEdit ? 'Save Changes' : 'Record Transfer'}</button>
@@ -330,4 +338,3 @@ export const Transactions = {
         `);
     },
 };
-
