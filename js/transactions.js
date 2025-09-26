@@ -2,15 +2,12 @@ export const Transactions = {
     template(App) {
         return `
             <p class="text-slate-500 mb-6">View and manage all your income and expenses.</p>
-            
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex gap-2">
+
+            <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                <div class="flex justify-between items-center mb-4">
                     <button id="show-add-transaction" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">+ Add Transaction</button>
                     <button id="show-self-transfer" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+ Self Transfer</button>
                 </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-lg shadow-md mb-6">
                 <h3 class="font-semibold mb-2">Filters</h3>
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <input type="date" id="filter-start-date" class="filter-input bg-slate-50 border border-slate-300 rounded-md p-2">
@@ -32,19 +29,17 @@ export const Transactions = {
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 gap-6 mb-6">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h3 class="text-xl font-semibold mb-4">Spending by Category</h3>
-                    <div class="relative h-80">
-                        <canvas id="transactions-category-chart"></canvas>
-                    </div>
-                </div>
+            <div id="bulk-actions-container" class="hidden bg-slate-100 p-4 rounded-lg shadow-md mb-6 flex justify-between items-center">
+                <span id="selected-count" class="font-semibold"></span>
+                <button id="bulk-update-category" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600">Update Category</button>
+                <button id="bulk-delete" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Delete Selected</button>
             </div>
-
+            
             <div class="bg-white rounded-lg shadow-md overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="bg-slate-50">
                         <tr>
+                            <th class="p-4"><input type="checkbox" id="select-all-transactions"></th>
                             <th class="p-4 font-semibold">Date</th>
                             <th class="p-4 font-semibold">Description</th>
                             <th class="p-4 font-semibold">Category/Transfer</th>
@@ -69,6 +64,12 @@ export const Transactions = {
         if (e.target.classList.contains('filter-input')) {
             Transactions.applyFilters(App);
         }
+        if (e.target.id === 'select-all-transactions') {
+            document.querySelectorAll('.transaction-checkbox').forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+            });
+        }
+        Transactions.updateBulkActionUI();
     },
 
     handleClick(App, e) {
@@ -99,6 +100,35 @@ export const Transactions = {
                 App.showToast('Transaction deleted.');
                 App.navigateTo('transactions');
             });
+        }
+
+        // Bulk actions
+        if (e.target.id === 'bulk-delete') {
+            const selectedIds = Transactions.getSelectedTransactionIds();
+            if (selectedIds.length === 0) {
+                App.showToast('No transactions selected.', 'error');
+                return;
+            }
+            App.showConfirmationModal('Delete Selected?', `Are you sure you want to delete ${selectedIds.length} transactions?`, () => {
+                App.state.transactions = App.state.transactions.filter(tx => !selectedIds.includes(tx.id.toString()));
+                App.db.save();
+                App.showToast(`${selectedIds.length} transactions deleted.`);
+                App.navigateTo('transactions');
+            });
+        }
+
+        if (e.target.id === 'bulk-update-category') {
+            const selectedIds = Transactions.getSelectedTransactionIds();
+            if (selectedIds.length === 0) {
+                App.showToast('No transactions selected.', 'error');
+                return;
+            }
+            // Exclude transfers from category updates
+            const nonTransferIds = App.state.transactions
+                .filter(tx => selectedIds.includes(tx.id.toString()) && tx.type !== 'transfer')
+                .map(tx => tx.id);
+
+            Transactions.showBulkUpdateCategoryModal(App, nonTransferIds);
         }
     },
 
@@ -165,6 +195,25 @@ export const Transactions = {
             App.closeModal();
             App.navigateTo('transactions');
         }
+
+        if (e.target.id === 'bulk-category-form') {
+            e.preventDefault();
+            const idsToUpdate = JSON.parse(e.target.dataset.ids);
+            const newCategoryId = document.getElementById('bulk-tx-category').value;
+
+            if (!newCategoryId) return;
+
+            App.state.transactions.forEach(tx => {
+                if (idsToUpdate.includes(tx.id)) {
+                    tx.categoryId = newCategoryId;
+                }
+            });
+
+            App.db.save();
+            App.showToast(`${idsToUpdate.length} transactions updated.`);
+            App.closeModal();
+            App.navigateTo('transactions');
+        }
     },
 
     renderTransactionsView(App, filteredTxs = null) {
@@ -180,6 +229,7 @@ export const Transactions = {
                     const category = App.getCategoryById(tx.categoryId);
                     return `
                         <tr class="border-b">
+                            <td class="p-4"><input type="checkbox" class="transaction-checkbox" data-id="${tx.id}"></td>
                             <td class="p-4">${new Date(tx.date).toLocaleDateString()}</td>
                             <td class="p-4">${tx.description || 'Self Transfer'}</td>
                             <td class="p-4"><span class="px-2 py-1 text-xs rounded-full" style="background-color:${category.color}33; color:${category.color}">${category.name}</span>
@@ -198,6 +248,7 @@ export const Transactions = {
                 const account = App.getAccountById(tx.accountId);
                 return `
                     <tr class="border-b">
+                        <td class="p-4"><input type="checkbox" class="transaction-checkbox" data-id="${tx.id}"></td>
                         <td class="p-4">${new Date(tx.date).toLocaleDateString()}</td>
                         <td class="p-4">${tx.description || 'N/A'}</td>
                         <td class="p-4"><span class="px-2 py-1 text-xs rounded-full" style="background-color:${category.color}33; color:${category.color}">${category.name}</span></td>
@@ -209,7 +260,7 @@ export const Transactions = {
                         </td>
                     </tr>
                 `;
-            }).join('') || '<tr><td colspan="6" class="p-4 text-center text-slate-500">No transactions found.</td></tr>';
+            }).join('') || '<tr><td colspan="7" class="p-4 text-center text-slate-500">No transactions found.</td></tr>';
         }
         Transactions.renderTransactionsCharts(App, transactions);
     },
@@ -255,6 +306,42 @@ export const Transactions = {
         if (account) filtered = filtered.filter(tx => tx.accountId == account || tx.destinationAccountId == account);
         
         Transactions.renderTransactionsView(App, filtered);
+    },
+
+    getSelectedTransactionIds() {
+        return Array.from(document.querySelectorAll('.transaction-checkbox:checked')).map(cb => cb.dataset.id);
+    },
+
+    updateBulkActionUI() {
+        const selectedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+        const container = document.getElementById('bulk-actions-container');
+        const countSpan = document.getElementById('selected-count');
+
+        if (selectedCount > 0) {
+            container.classList.remove('hidden');
+            countSpan.textContent = `${selectedCount} transaction${selectedCount > 1 ? 's' : ''} selected`;
+        } else {
+            container.classList.add('hidden');
+        }
+    },
+
+    showBulkUpdateCategoryModal(App, transactionIds) {
+        if (transactionIds.length === 0) {
+            App.showToast('No non-transfer transactions selected for category update.', 'error');
+            return;
+        }
+        App.showModal(`Update Category for ${transactionIds.length} Transactions`, `
+            <form id="bulk-category-form" data-ids='${JSON.stringify(transactionIds)}'>
+                <p class="mb-4 text-slate-600">Select a new category to apply to all selected transactions. This will not affect self-transfers.</p>
+                <div>
+                    <label class="block text-sm font-medium">New Category</label>
+                    <select id="bulk-tx-category" required class="mt-1 w-full bg-slate-50 border rounded-md p-2">${App.getCategoryOptions()}</select>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Update Category</button>
+                </div>
+            </form>
+        `);
     },
 
     showAddEditTransactionModal(App, transaction = null) {
